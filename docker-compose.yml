@@ -1,4 +1,4 @@
-version: '3.3'
+version: '3.8'  # Alterado para 3.8 para maior compatibilidade
 
 volumes:
   db-data:
@@ -13,28 +13,43 @@ services:
       - POSTGRES_DB=typebot
       - POSTGRES_PASSWORD=typebot
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U postgres"]
-        interval: 5s
-        timeout: 5s
-        retries: 5
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   typebot-builder:
     image: baptistearno/typebot-builder:latest
     restart: always
     depends_on:
-      typebot-db:
-        condition: service_healthy
+      - typebot-db  # Atualizado para remover condition
     ports:
       - '8080:3000'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     env_file: .env
+    entrypoint: >
+      sh -c "
+      until pg_isready -h typebot-db -U postgres; do
+        echo 'Waiting for database...';
+        sleep 2;
+      done;
+      npm start;
+      "
 
   typebot-viewer:
     image: baptistearno/typebot-viewer:latest
-    depends_on:
-      typebot-db:
-        condition: service_healthy
     restart: always
+    depends_on:
+      - typebot-db  # Atualizado para remover condition
     ports:
       - '8081:3000'
     env_file: .env
+    entrypoint: >
+      sh -c "
+      until pg_isready -h typebot-db -U postgres; do
+        echo 'Waiting for database...';
+        sleep 2;
+      done;
+      npm start;
+      "
